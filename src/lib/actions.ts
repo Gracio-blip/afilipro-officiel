@@ -360,6 +360,37 @@ export async function completeTask(taskId: string) {
   });
 }
 
+// Action spéciale pour valider le quiz avec un score précis (nombre de bonnes réponses)
+export async function completeQuizAction(taskId: string, correctCount: number) {
+  const current = await getCurrentUser();
+  if (!current) redirect("/login");
+  if (!current.user.isActive) throw new Error("Déposez 2 500 FCFA pour accéder au quiz");
+
+  const existing = await db.select().from(userTasks)
+    .where(and(eq(userTasks.userId, current.user.id), eq(userTasks.taskId, taskId))).limit(1);
+  if (existing[0]) throw new Error("Quiz déjà complété");
+
+  const reward = correctCount * 50;
+
+  await db.transaction(async (tx) => {
+    await tx.insert(userTasks).values({ userId: current.user.id, taskId });
+    const wRows = await tx.select().from(wallets).where(eq(wallets.userId, current.user.id)).limit(1);
+    const w = wRows[0];
+    await tx.update(wallets).set({
+      balance:      (Number(w.balance)      + reward).toString(),
+      taskBalance:  (Number(w.taskBalance ?? 0)  + reward).toString(),
+      taskEarnings: (Number(w.taskEarnings ?? 0) + reward).toString(),
+    }).where(eq(wallets.userId, current.user.id));
+    await tx.insert(transactions).values({
+      userId: current.user.id, type: "earning",
+      amount: reward.toString(), status: "completed",
+      description: `Quiz quotidien (${correctCount}/3 réponses correctes) — Gain de ${reward} FCFA`,
+    });
+  });
+
+  return { reward, message: `Félicitations ! Vous avez trouvé ${correctCount} bonne(s) réponse(s) et gagné ${reward} FCFA !` };
+}
+
 // ─────────────────────────────────────────────
 // LUCKY SPIN — 3 tentatives par 24h, compte actif requis
 // Probabilités : 0=60%, 500=27%, 800=13% — l'utilisateur PEUT perdre
