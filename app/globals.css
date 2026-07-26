@@ -1,0 +1,61 @@
+@import "tailwindcss";
+
+:root {
+  --app-bg: #f5f6fb;
+  --dark: #0b1120;
+  --dark-2: #111827;
+  --gold: #f5c453;
+  --gold-light: #facc15;
+  --purple: #7c3aed;
+  --purple-light: #a78bfa;
+  --emerald: #10b981;
+  --slate-text: #64748b;
+}
+
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; -webkit-tap-highlight-color: transparent; }
+body {
+  margin: 0;
+  min-height: 100vh;
+  background: var(--app-bg);
+  color: #0f172a;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+::-webkit-scrollbar { width: 0; height: 0; }
+
+.afili-card {
+  box-shadow: 0 10px 40px -10px rgba(15, 23, 42, 0.1);
+}
+
+.afili-hero {
+  background: linear-gradient(135deg, #0f172a 0%, #1e293b 50%, #0b1120 100%);
+}
+
+.live-dot {
+  animation: livePulse 1.5s ease-in-out infinite;
+}
+
+@keyframes livePulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.3); opacity: 0.7; }
+}
+
+@keyframes shine {
+  from { transform: translateX(-100%); }
+  to { transform: translateX(100%); }
+}
+
+.shine-bar {
+  position: relative;
+  overflow: hidden;
+}
+
+.shine-bar::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+  transform: translateX(-100%);
+  animation: shine 2s infinite;
+}
