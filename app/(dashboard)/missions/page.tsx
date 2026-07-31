@@ -3,8 +3,9 @@ import { db } from "@/db";
 import { tasks, userTasks, users } from "@/db/schema";
 import { eq } from "drizzle-orm";
 import { completeTask, seedIfEmpty } from "@/lib/actions";
-import { formatMoney } from "@/lib/utils";
+import { formatMoney, formatGMT } from "@/lib/utils";
 import Link from "next/link";
+import QuizGame from "./QuizGame";
 
 function getLomeTimeStr(): string {
   return (
@@ -21,13 +22,6 @@ function getLomeTimeStr(): string {
 }
 
 const taskMeta: Record<string, { icon: string; diff: string; diffColor: string; tip: string; calc: string }> = {
-  quiz: {
-    icon: "🎯",
-    diff: "🔴 Difficile",
-    diffColor: "bg-rose-50 text-rose-700 border border-rose-200",
-    tip: "3 questions de culture générale. 50 FCFA par bonne réponse. Toutes correctes = 150 FCFA. Une erreur = mission annulée.",
-    calc: "3 questions × 50 FCFA = 150 FCFA",
-  },
   telegram: {
     icon: "📲",
     diff: "🟡 Moyenne",
@@ -55,10 +49,13 @@ export default async function MissionsPage() {
     }
   }
 
-  // Exclure le spin et le jeu des bouteilles (ils ont leurs propres pages dédiées)
-  const allTasks = (await db.select().from(tasks).where(eq(tasks.isActive, true))).filter(
-    (t) => t.type !== "spin" && t.type !== "bottle"
-  );
+  // Obtenir toutes les tâches
+  const allTasks = await db.select().from(tasks).where(eq(tasks.isActive, true));
+  const quizTask = allTasks.find((t) => t.type === "quiz");
+  const telegramTask = allTasks.find((t) => t.type === "telegram");
+
+  const isQuizDone = quizTask ? doneIds.has(quizTask.id) : false;
+  const isTelegramDone = telegramTask ? doneIds.has(telegramTask.id) : false;
 
   const lomeTime = getLomeTimeStr();
 
@@ -79,51 +76,59 @@ export default async function MissionsPage() {
         )}
       </div>
 
-      {/* TASKS */}
-      <div className="grid gap-3">
-        {allTasks.map((task: any) => {
-          const done = doneIds.has(task.id);
-          const meta = taskMeta[task.type ?? "quiz"] ?? taskMeta.quiz;
-
-          return (
-            <div key={task.id} className={`rounded-[20px] border border-slate-200 bg-white p-4 afili-card ${done ? "opacity-60" : ""}`}>
-              <div className="flex items-start gap-4">
-                <div className="grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-slate-900 text-[26px]">{meta.icon}</div>
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
-                    <p className="text-[15px] font-black text-slate-900">{task.title}</p>
-                    <span className="shrink-0 rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">
-                      +{formatMoney(Number(task.reward))}
-                    </span>
-                  </div>
-                  <p className="mt-1 text-[12px] text-slate-500">{task.description}</p>
-                  <span className={`mt-2 inline-block rounded-lg px-2 py-0.5 text-[10px] font-black ${meta.diffColor}`}>{meta.diff}</span>
-                  <div className="mt-2 rounded-xl bg-slate-50 px-3 py-2">
-                    <p className="text-[11px] font-black text-slate-600">📊 {meta.calc}</p>
-                    <p className="mt-0.5 text-[10px] text-slate-400">{meta.tip}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="mt-4">
-                {!isActive ? (
-                  <div className="flex items-center justify-center rounded-2xl bg-slate-100 py-3 text-[13px] font-black text-slate-400">🔒 Dépôt requis</div>
-                ) : done ? (
-                  <div className="flex items-center justify-center gap-2 rounded-2xl border border-emerald-200 bg-emerald-50 py-3 text-[13px] font-black text-emerald-700">
-                    ✓ Tâche accomplie · +{formatMoney(Number(task.reward))}
-                  </div>
-                ) : (
-                  <form action={async () => { "use server"; await completeTask(task.id); }}>
-                    <button className="w-full rounded-2xl bg-[#0B1120] py-3 text-[13px] font-black text-white transition active:scale-[0.98]">
-                      Commencer la tâche →
-                    </button>
-                  </form>
-                )}
+      {/* QUIZ INTERACTIF */}
+      {quizTask && (
+        <div className={`rounded-[22px] border bg-white p-5 afili-card ${isQuizDone ? "opacity-60" : ""}`}>
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <span className="text-[26px]">🎯</span>
+              <div>
+                <h2 className="text-[17px] font-black text-slate-900">{quizTask.title}</h2>
+                <p className="text-[12px] text-slate-500">Gagne 50 FCFA par bonne réponse (max 150 FCFA)</p>
               </div>
             </div>
-          );
-        })}
-      </div>
+            <span className="rounded-full bg-rose-100 border border-rose-200 px-2.5 py-0.5 text-[10px] font-black text-rose-700">🔴 Difficile</span>
+          </div>
+
+          {isQuizDone ? (
+            <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 border border-emerald-200 py-3 text-[13px] font-black text-emerald-700">
+              ✓ Quiz quotidien déjà complété
+            </div>
+          ) : (
+            <QuizGame canPlay={isActive} taskId={quizTask.id} />
+          )}
+        </div>
+      )}
+
+      {/* AUTRES MISSIONS (Telegram) */}
+      {telegramTask && (
+        <div className={`rounded-[20px] border bg-white p-4 afili-card ${isTelegramDone ? "opacity-60" : ""}`}>
+          <div className="flex items-start gap-4">
+            <div className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-sky-500 text-[22px]">📲</div>
+            <div className="flex-1">
+              <div className="flex items-center justify-between gap-2 flex-wrap">
+                <p className="text-[14px] font-black text-slate-900">{telegramTask.title}</p>
+                <span className="rounded-full bg-emerald-100 px-2.5 py-0.5 text-[11px] font-black text-emerald-700">+{formatMoney(Number(telegramTask.reward))}</span>
+              </div>
+              <p className="mt-1 text-[12px] text-slate-500">{telegramTask.description}</p>
+              <span className="mt-2 inline-block rounded-lg border border-amber-200 bg-amber-50 px-2 py-0.5 text-[10px] font-black text-amber-700">🟡 Moyenne</span>
+            </div>
+          </div>
+          <div className="mt-3">
+            {isTelegramDone ? (
+              <div className="flex items-center justify-center gap-2 rounded-2xl bg-emerald-50 py-2.5 text-[13px] font-black text-emerald-700">
+                ✓ Canal rejoint · +50 FCFA
+              </div>
+            ) : !isActive ? (
+              <div className="rounded-2xl bg-slate-100 py-2.5 text-center text-[12px] font-bold text-slate-400">🔒 Dépôt requis</div>
+            ) : (
+              <form action={async () => { "use server"; await completeTask(telegramTask.id); }}>
+                <button className="w-full rounded-2xl bg-[#0B1120] py-3 text-[13px] font-black text-white transition active:scale-[0.98]">Rejoindre et valider →</button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Jeu des bouteilles CTA */}
       <Link
