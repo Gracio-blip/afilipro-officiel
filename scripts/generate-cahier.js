@@ -421,12 +421,26 @@ newPage();
 h1("18.", "Déploiement et mise en production");
 h2("Variables d'environnement requises");
 table(["Variable", "Rôle"], [
-  ["DATABASE_URL", "Connexion PostgreSQL Neon (SSL)"],
-  ["AUTH_SECRET", "Signature des sessions JWT"],
-  ["NEXT_PUBLIC_APP_URL", "URL publique du site"],
-  ["TELEGRAM_BOT_TOKEN", "Token du bot de notification"],
+  ["DATABASE_URL", "Connexion PostgreSQL de production avec SSL"],
+  ["AUTH_SECRET", "Clé aléatoire de signature des sessions JWT"],
+  ["NEXT_PUBLIC_APP_URL", "URL publique officielle du site"],
+  ["TELEGRAM_BOT_TOKEN", "Jeton secret du bot de notification"],
   ["TELEGRAM_CHAT_ID", "Identifiant du chat administrateur"],
 ], [200, 283]);
+h2("Formats attendus (exemples fictifs)");
+table(["Variable", "Exemple non secret"], [
+  ["DATABASE_URL", "postgresql://USER:PASSWORD@HOST/DATABASE?sslmode=require"],
+  ["AUTH_SECRET", "Générer avec : openssl rand -base64 32"],
+  ["NEXT_PUBLIC_APP_URL", "https://afilipro.example.com"],
+  ["TELEGRAM_BOT_TOKEN", "123456789:AAExempleTokenRemplaceMoi"],
+  ["TELEGRAM_CHAT_ID", "123456789"],
+], [180, 303]);
+box("Protection obligatoire des secrets", [
+  "Ne jamais écrire les vraies valeurs dans le PDF, le code source ou un dépôt GitHub public.",
+  "Stocker les vraies valeurs uniquement dans Environment Variables / Secrets chez l'hébergeur.",
+  "Révoquer et régénérer immédiatement toute valeur publiée par erreur.",
+  "Limiter l'accès au panneau d'administration et aux secrets au propriétaire du projet.",
+], [239, 68, 68]);
 h2("Procédure");
 bullet("Dépôt du code sur GitHub (dossier app/ à la racine, proxy.ts, vercel.json).");
 bullet("Import du dépôt sur l'hébergeur ; build automatique « npm run build ».");
